@@ -23,9 +23,11 @@ The officially released code of [SupContrast](https://github.com/HobbitLong/SupC
 
 This implementation only supports **multi-gpu**, **DistributedDataParallel** training, which is faster and simpler; single-gpu or DataParallel training is not supported.
 
+There are three frameworks: **main_moco_in**, **main_moco_out**, **main_moco_suploss**.
+
 To do unsupervised pre-training of a ResNet-50 model on Cifar-10 in an 2-gpu machine, run:
 ```
-CUDA_VISIBLE_DEVICES=0,1  python main_moco.py \
+CUDA_VISIBLE_DEVICES=0,1  python main_moco_out.py \
   -a resnet50 \
   --lr 0.12 \
   --batch-size 256 --moco-k 4096 \
@@ -85,7 +87,7 @@ Linear classification results on Cifar-10 with (2 or 8) 2080Ti GPUs :
 <td align="center">87.4</td>
 <td align="center">99.6</td>
 </tr>
-<tr><td align="left">MoCo v2 + SupContrast </td>
+<tr><td align="left">MoCo v2 + SupContrast_In </td>
 <td align="center">200</td>
 <td align="center">256</td>
 <td align="center">95.4</td>
@@ -97,11 +99,23 @@ Linear classification results on Cifar-10 with (2 or 8) 2080Ti GPUs :
 <td align="center">93.6</td>
 <td align="center">99.8</td>
 </tr>
-<tr><td align="left">MoCo v2 + SupContrast </td>
+<tr><td align="left">MoCo v2 + SupContrast_In </td>
 <td align="center">1000</td>
 <td align="center">256</td>
 <td align="center">96.1</td>
 <td align="center">99.8</td>
+</tr>
+<tr><td align="left">MoCo v2 + SupContrast_Out </td>
+<td align="center">1000</td>
+<td align="center">256</td>
+<td align="center">96.1</td>
+<td align="center">99.9</td>
+</tr>
+<tr><td align="left">MoCo v2 + SupContrast_Suploss </td>
+<td align="center">1000</td>
+<td align="center">256</td>
+<td align="center">96.0</td>
+<td align="center">99.9</td>
 </tr>
 </tbody></table>
 

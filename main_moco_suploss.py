@@ -23,10 +23,11 @@ import torchvision.transforms as transforms
 import torchvision.models as models
 
 import moco.loader
-import moco.builder
+import moco.builder_suploss
 
 import datasets
-from resnet_small import resnet50 as ResNet50
+from resnet_small import resnet50 as ResNet
+from sup_losses import SupLoss
 
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
@@ -165,10 +166,12 @@ def main_worker(gpu, ngpus_per_node, args):
                                 world_size=args.world_size, rank=args.rank)
     # create model
     print("=> creating model '{}'".format(args.arch))
-    model = moco.builder.MoCo(
-        ResNet50,
+    model = moco.builder_suploss.MoCo(
+        ResNet,
         args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
     print(model)
+
+    # Load
 
     if args.distributed:
         # For multiprocessing distributed, DistributedDataParallel constructor
@@ -199,7 +202,8 @@ def main_worker(gpu, ngpus_per_node, args):
         raise NotImplementedError("Only DistributedDataParallel is supported.")
 
     # define loss function (criterion) and optimizer
-    criterion = nn.CrossEntropyLoss().cuda(args.gpu)
+    criterion_ce = nn.CrossEntropyLoss().cuda(args.gpu)
+    criterion = SupLoss(temperature=args.moco_t, K=args.moco_k).cuda(args.gpu)
 
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
@@ -255,15 +259,31 @@ def main_worker(gpu, ngpus_per_node, args):
 
     train_dataset = datasets.CIFAR10Instance(root=stldir, train=True, download=True,
                                              transform=moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
+    eval_dataset = datasets.CIFAR10Instance(root=stldir, train=True, download=True,
+                                            transform=transforms.Compose(augmentation))
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+        eval_sampler = torch.utils.data.distributed.DistributedSampler(eval_dataset, shuffle=False)
     else:
         train_sampler = None
+        eval_sampler = None
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
         num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True)
+    eval_loader = torch.utils.data.DataLoader(
+        eval_dataset, batch_size=args.batch_size, shuffle=False,
+        num_workers=args.workers, pin_memory=True, sampler=eval_sampler)
+
+    # model.module._show_label_information()
+    for i, (images, labels, index) in enumerate(eval_loader):
+        if args.gpu is not None:
+            labels = labels.cuda(args.gpu, non_blocking=True)
+            index = index.cuda(args.gpu, non_blocking=True)
+        model.module._init_label_information(index, labels)
+        # break
+    model.module._show_label_information()
 
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
@@ -306,23 +326,14 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         if args.gpu is not None:
             images[0] = images[0].cuda(args.gpu, non_blocking=True)
             images[1] = images[1].cuda(args.gpu, non_blocking=True)
-            labels = labels.cuda(args.gpu, non_blocking=True)
+            index = index.cuda(args.gpu, non_blocking=True)
 
         # compute output
-        output, target_queue = model(im_q=images[0], im_k=images[1], label=labels)
+        features, targets = model(im_q=images[0], im_k=images[1], index=index)
 
         ### SupCon Loss
-        bsz = labels.shape[0]
-        sempos_idx = target_queue.eq(labels.view(-1, 1)).long()  # Nx(K+B)
-        pos_idx = sempos_idx  # Nx(K+B)
-        # count pos num
-        pos_count = pos_idx.sum(1) # N
-        # pos-neg logits
-        pos_logits = (output.exp() * pos_idx).sum(1) # N
-        # neg_logits = (output.exp() * (1 - pos_idx)).sum(1)
-        neg_logits = output.exp().sum(1)
-        logits = torch.div(pos_logits, neg_logits) / pos_count
-        loss = - torch.log(logits).sum() / bsz
+
+        loss = criterion(features, targets)
 
         losses.update(loss.item(), images[0].size(0))
 
