@@ -119,6 +119,36 @@ Linear classification results on Cifar-10 with (2 or 8) 2080Ti GPUs :
 </tr>
 </tbody></table>
 
+Linear classification results on Cifar-100 with 2 2080Ti GPUs :
+<table><tbody>
+<!-- START TABLE -->
+<!-- TABLE HEADER -->
+<th valign="bottom"></th>
+<th valign="bottom">pre-train<br/>epochs</th>
+<th valign="bottom">pre-train<br/>batch-size</th>
+<th valign="bottom">ResNet-50<br/>top-1 acc.</th>
+<th valign="bottom">ResNet-50<br/>top-5 acc.</th>
+<!-- TABLE BODY -->
+<tr><td align="left">SupCrossEntropy </td>
+<td align="center">500</td>
+<td align="center">1024</td>
+<td align="center">75.3</td>
+<td align="center">-</td>
+</tr>
+<tr><td align="left">SupContrast </td>
+<td align="center">1000</td>
+<td align="center">1024</td>
+<td align="center">76.5</td>
+<td align="center">-</td>
+</tr>
+<tr><td align="left">MoCo v2 + SupContrast_Out </td>
+<td align="center">1000</td>
+<td align="center">256</td>
+<td align="center">77.3</td>
+<td align="center">93.0</td>
+</tr>
+</tbody></table>
+
 
 ## Reference
 
