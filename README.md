@@ -147,6 +147,12 @@ Linear classification results on Cifar-100 with 2 2080Ti GPUs :
 <td align="center">77.3</td>
 <td align="center">93.0</td>
 </tr>
+<tr><td align="left">MoCo v2 + SupContrast_Suploss </td>
+<td align="center">1000</td>
+<td align="center">256</td>
+<td align="center">78.0</td>
+<td align="center">93.2</td>
+</tr>
 </tbody></table>
 
 
